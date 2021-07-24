@@ -1,4 +1,5 @@
 MoSh_results/
 freemocap/
 __pycache__/
+.mypy_cache/
 .env/
