@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field, fields
 import dataclasses
 from typing import List, Any
-from assets.connection_map import left_hand, right_hand, body, face
+from assets.connection_map import left_hand, right_hand, body, face, main_data_class
 
 # numpy
 import numpy as np
@@ -44,7 +44,9 @@ class freemocap_app(object):
         self.app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP, self.css_style_sheet])
         self.sidebar =sidebar()
         self.content = html.Div(id="page-content", style=sidebar.CONTENT_STYLE)
+        # html layout
         self._update_layout()
+        # setup callback
         self._add_callbacks()
 
         # if you have more body ports create a database of connection and add here
@@ -63,16 +65,28 @@ class freemocap_app(object):
 
 
     def _update_layout(self):
+        """update the layout for the app
+        """
         self.app.layout = html.Div([dcc.Location(id="url"),
                                     self.sidebar.html(), self.content])
 
     def _add_callbacks(self) -> None:
+        """add the callback function for the updating the figure
+        """
         self.app.callback(Output("page-content", "children"),
                           [Input("url", "pathname")])(self._render_page_content)
         self.app.callback(Output('live-update-graph', 'figure'),
                           Input('interval-component', 'n_intervals'))(self._plot_3d_frame_data)
 
-    def _render_page_content(self,pathname:str):
+    def _render_page_content(self,pathname:str) -> dbc.Jumbotron:
+        """Render the page content based on the html path
+
+        Args:
+            pathname (str): html path
+
+        Returns:
+            dbc.Jumbotron: [html content]
+        """
         if pathname == "/":
             return self._render_3d_home()
         elif pathname == "/page-1":
@@ -89,6 +103,11 @@ class freemocap_app(object):
         )
 
     def _render_3d_home(self) -> html.Div:
+        """Render the 3d animation in the homepage
+
+        Returns:
+            html.Div: html division containing all the information
+        """
         data = html.Div(
             html.Div([
                 html.H4('3d feed feed'),
@@ -104,6 +123,8 @@ class freemocap_app(object):
         return data
 
     def _load_free_mocap_data(self):
+        """Load the data from the self.open_pose_file_path
+        """
         skel_fr_mar_dim = np.load(self.open_pose_file_path)
         # smotthing similar to freemocap
 
@@ -118,6 +139,14 @@ class freemocap_app(object):
 
 
     def _template_3d_plot(self,n: int) -> go.Figure:
+        """Test 3d plot
+
+        Args:
+            n (int): number of callback generated automatically based on the timer set in the callback
+
+        Returns:
+            go.Figure: Figure instance containing all the information
+        """
         t = np.linspace(0, n, 10 * n)
         print(n)
         x, y, z = np.cos(t), np.sin(t), t
@@ -133,7 +162,15 @@ class freemocap_app(object):
 
 
     def _plot_3d_frame_data(self,n: int) -> go.Figure:
-        print(self.frame_counter)
+        """plot 3d skeleton data based on the frame count
+
+        Args:
+            n (int): number of the callback generated automatically based on the timer set in the callback
+
+        Returns:
+            go.Figure: Figure instance containing all the information
+        """
+        # print(self.frame_counter)
         self.frame_counter += 1
         if  self.frame_counter > len(self.openpose_3d_data[:,1,1]):
             self.frame_counter = 0
@@ -144,15 +181,23 @@ class freemocap_app(object):
                     xaxis = dict(nticks=4, range=[-500,500],),
                     yaxis = dict(nticks=4, range=[-900,1600],),
                     zaxis = dict(nticks=4, range=[-800,500],)),
+            # change this based on the browser
             width = 2000,
             height = 1000,
             # camera = dict(eye=dict(x=0., y=2.5, z=0.))
         )
-        # fig.show()
         return fig
 
 
     def _plot_frame(self,frame_id: int) -> List:
+        """Plot all the bodies in the frame
+
+        Args:
+            frame_id (int): frame number to plot
+
+        Returns:
+            List: list of the all the scatter3d instance
+        """
         fig_instance = []
         for body_part in self.body_parts:
             print(body_part.get_name())
@@ -162,6 +207,16 @@ class freemocap_app(object):
 
 
     def _plot_data_points(self, frame_id:int, body_part:int, mode:str = 'lines+markers') -> go.Scatter3d:
+        """plot data points for each body
+
+        Args:
+            frame_id (int): frame number
+            body_part (main_data_class): body path dataclass 
+            mode (str, optional): type of graph for only markers use 'markers'. Defaults to 'lines+markers'.
+
+        Returns:
+            go.Scatter3d: instance of the Scatter3d plot
+        """
 
         # I will go step by step for clear understanding, but can be oprtimized
         mark_pose = body_part.get_values()
@@ -176,6 +231,7 @@ class freemocap_app(object):
         z_data = z_data[~np.isnan(z_data)]
 
         # x_data, y_data, z_data needs to be rotated
+        # TODO: add a method to handle the 3d rotation.
         fig_instance = go.Scatter3d(x=x_data, y=z_data,
                                     z=y_data * -1, mode=mode, name = body_part.get_name())
         print(x_data, y_data, z_data)
