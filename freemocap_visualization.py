@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field, fields
 import dataclasses
 from typing import List, Any
-from connection_map import left_hand, right_hand, body, face
+from assets.connection_map import left_hand, right_hand, body, face
 
 # numpy
 import numpy as np
