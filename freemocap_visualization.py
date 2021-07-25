@@ -2,51 +2,112 @@
 from dataclasses import dataclass, field, fields
 import dataclasses
 from typing import List
+from connection_map import left_hand, right_hand, body, face
 
-
+# numpy
 import numpy as np
 
-# I like this a lot for storing information and displaying
 
-@dataclass(frozen=True)
-class left_hand:
+# load dash components
+import numpy as np
+import dash
+import dash_bootstrap_components as dbc
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+import plotly.graph_objects as go
 
-    thumb: List[int] = field(default_factory=lambda:[46, 47, 48, 49, 50])
-    index: List[int] = field(default_factory=lambda:[46, 51, 52, 53, 54])
-    middle: List[int] = field(default_factory=lambda:[46, 55, 56, 57, 58])
-    ring: List[int] = field(default_factory=lambda:[46, 59, 60, 61, 62])
-    pinky: List[int] = field(default_factory=lambda:[46, 63, 64, 65, 66])
-
-@dataclass(frozen=True)
-class right_hand:
-
-    thumb: List[int] = field(default_factory=lambda:[25, 26, 27, 28, 29])
-    index: List[int] = field(default_factory=lambda:[25, 30, 31, 32, 33])
-    middle: List[int] = field(default_factory=lambda:[25, 34, 35, 36, 37])
-    ring: List[int] = field(default_factory=lambda:[25, 38, 39, 40, 41])
-    pinky: List[int] = field(default_factory=lambda:[25, 42, 43, 44, 45])
+import plotly
 
 
 
-@dataclass(frozen=True)
-class body:
-    head: List[int] = field(default_factory=lambda:[17, 15, 0, 1, 0, 16, 18])
-    spine: List[int] = field(default_factory=lambda:[1, 8, 5, 1, 2, 12, 8, 9, 5, 1, 2, 8])
-    right_arm: List[int] = field(default_factory=lambda:[1, 2, 3, 4])
-    left_arm: List[int] = field(default_factory=lambda:[1, 5, 6, 8])
-    right_leg: List[int] = field(default_factory=lambda:[8, 9, 10, 11, 22, 23, 11, 24])
-    left_leg: List[int] = field(default_factory=lambda:[8, 12, 13, 14, 19, 20, 14, 21])
+# Sidebar
+from assets.sidebar import sidebar
 
-@dataclass(frozen=True)
-class face:
-    jaw: List[int] = field(default_factory=lambda:[67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82])
-    rBrow: List[int] =  field(default_factory=lambda:[84, 85, 86, 87])
-    lBrow: List[int] =  field(default_factory=lambda:[89, 90, 91, 92])
-    noseRidge: List[int] =  field(default_factory=lambda:[94, 95, 96])
-    noseBot: List[int] = field(default_factory = lambda:[ 98,  99, 100, 101])
-    rEye: List[int] = field(default_factory=lambda:[103, 104, 105, 106, 107, 103])
-    lEye: List[int] =  field(default_factory=lambda:[109, 110, 111, 112, 113, 109])
-    upperLip: List[int] =  field(default_factory=lambda: [115, 116, 117, 118, 119, 120, 130, 129, 128, 127, 115])
-    lowerLip: List[int] = field(default_factory=lambda: [127, 131, 132, 133, 121, 122, 123, 124, 125, 115, 127])
-    rPupil: List[int] =  field(default_factory=lambda: [135]) 
-    lPupil: List[int] = field(default_factory=lambda:[136])
+
+
+
+
+class freemocap_app(object):
+
+    # general body objects
+    left_hand = left_hand()
+    right_hand = right_hand()
+    body = body()
+    face = face()
+
+    def __init__(self):
+        # css
+        self.css_style_sheet = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+        self.app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP, self.css_style_sheet])
+        self.sidebar =sidebar()
+        self.content = html.Div(id="page-content", style=sidebar.CONTENT_STYLE)
+        self._update_layout()
+        self._add_callbacks()
+
+
+
+    def _update_layout(self):
+        self.app.layout = html.Div([dcc.Location(id="url"),
+                                    self.sidebar.html(), self.content])
+
+    def _add_callbacks(self):
+        self.app.callback(Output("page-content", "children"),
+                          [Input("url", "pathname")])(self._render_page_content)
+        self.app.callback(Output('live-update-graph', 'figure'),
+                          Input('interval-component', 'n_intervals'))(self._template_3d_plot)
+
+    def _render_page_content(self,pathname):
+        if pathname == "/":
+            return self._render_3d_home()
+        elif pathname == "/page-1":
+            return html.P("This is the content of page 1. for specific marker trajectory!!!Future is great")
+        elif pathname == "/page-2":
+            return html.P("Oh cool, this is page 2!")
+        # If the user tries to reach a different page, return a 404 message
+        return dbc.Jumbotron(
+            [
+                html.H1("404: Not found", className="text-danger"),
+                html.Hr(),
+                html.P(f"The pathname {pathname} was not recognised..."),
+            ]
+        )
+
+    def _render_3d_home(self):
+        data = html.Div(
+            html.Div([
+                html.H4('3d feed feed'),
+                html.Div(id='live-update-text'),
+                dcc.Graph(id='live-update-graph',
+                               figure={
+                                'layout': plotly.graph_objs.Layout(
+                                    xaxis =  {
+                                        'showgrid': False
+                                             },
+                                    yaxis = {
+                                        'showgrid': False
+                                            })
+                                        },
+                          ),
+                dcc.Interval(
+                    id='interval-component',
+                    interval=0.2*1000, # in milliseconds
+                    n_intervals=0
+                )
+            ])
+        )
+        return data
+
+    def _template_3d_plot(self,n):
+        t = np.linspace(0, n, 10 * n)
+        print(n)
+        x, y, z = np.cos(t), np.sin(t), t
+
+        fig = go.Figure(data=[go.Scatter3d(x=x, y=y, z=z,
+                                           mode='markers')])
+        return fig
+
+
+
+if __name__ == "__main__":
+        freemocap_app().app.run_server(port=8888, debug =True)
