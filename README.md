@@ -20,12 +20,13 @@ python freemocap_visualization.py
 
 
 # TODO
- - [ ] Toolbar setup
- - [ ] visualization work based on the timer
- - [ ] documentation for the fuction
+ - [x] Toolbar setup
+ - [x] visualization work based on the timer
+ - [x] documentation for the fuction
  - [ ] have a button to stop the vis.
  - [ ] fix the viewing angle.
  - [ ] Add trajectory information.
 
+# cool stuff thanks to plotly
 ### Hover infomation
 ![Hover and info](pics/hover.png)
