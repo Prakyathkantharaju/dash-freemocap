@@ -2,6 +2,7 @@
 
 ## 3d visualization for the mocap data in bowser
 ![General](pics/general.png)
+![animation](pics/animation.gif)
 
 # Usage
 - Python 3.8+
